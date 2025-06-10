@@ -1096,8 +1096,10 @@ func (d *Decoder) decodeSlice(name string, data interface{}, val reflect.Value) 
 					val.Set(reflect.MakeSlice(sliceType, 0, 0))
 					return nil
 				}
-				// Create slice of maps of other sizes
-				return d.decodeSlice(name, []interface{}{data}, val)
+
+				// map can`t conv to array or slice
+				return fmt.Errorf(
+					"'%s': source data must be an array or slice, got %s", name, dataValKind)
 
 			case dataValKind == reflect.String && valElemType.Kind() == reflect.Uint8:
 				return d.decodeSlice(name, []byte(dataVal.String()), val)
@@ -1125,6 +1127,13 @@ func (d *Decoder) decodeSlice(name string, data interface{}, val reflect.Value) 
 		valSlice = reflect.MakeSlice(sliceType, dataVal.Len(), dataVal.Len())
 	} else if valSlice.Len() > dataVal.Len() {
 		valSlice = valSlice.Slice(0, dataVal.Len())
+	}
+
+	if bytesData, ok := data.([]byte); ok {
+		if valElemType.Kind() == reflect.Uint8 {
+			val.Set(reflect.Indirect(reflect.ValueOf(bytesData)))
+			return nil
+		}
 	}
 
 	// Accumulate any errors
